@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0D0D0D"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -20,11 +20,17 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "backgroundColor": "#0D0D0D"
+      },
+      "package": "com.augustogugu164.toDoList"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3cd07839-684f-41a1-8cdf-a34d8bd1eb44"
+      }
     }
   }
 }

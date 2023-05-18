@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 
 import {
   StatusBar,
@@ -8,66 +8,85 @@ import {
   Text,
   FlatList,
   Alert,
-  TouchableWithoutFeedback,
+  Image,
   Keyboard,
+  Platform,
 } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
 import { styles } from './styles';
 import { Header } from '@components/Header';
 import { Input } from '@components/Input';
 import { Task_Card } from '@components/Task_Card';
-
-type Task = {
-  title: string;
-  checked: boolean;
-};
+import { AddStorageTask } from '@storage/addStorageTask';
+import { GetStorageTask } from '@storage/getStorageTask';
+import { removeStorageTask } from '@storage/removeStorageTask';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TASK_COLLECTION } from '@storage/storageConfig';
+import { StorageTaskDTO } from '@storage/storageTaskDTO';
 
 export function Home() {
   const [inputTask, setInputTask] = useState('');
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<StorageTaskDTO[]>([]);
+
+  async function fetchTasks() {
+    try {
+      const getTasks = await GetStorageTask();
+      setTasks(getTasks);
+    } catch (error) {
+      Alert.alert('Opa!', 'Não foi possível carregar os dados.');
+    }
+  }
 
   function handleAddTask() {
-    if (!inputTask.trim() || inputTask.length === 0) {
-      Alert.alert(
-        'Escreva algo para que seja anotado na sua lista de tarefas.'
-      );
-      return;
+    try {
+      if (!inputTask.trim() || inputTask.length === 0) {
+        Alert.alert(
+          'Escreva algo para que seja anotado na sua lista de tarefas.'
+        );
+        return;
+      }
+      const newTask = { title: inputTask, checked: false };
+
+      AddStorageTask(tasks, newTask);
+      fetchTasks();
+      setInputTask('');
+      Keyboard.dismiss();
+    } catch (error) {
+      console.log(error);
+      Alert.alert('Opa!', 'Não foi possível adicionar a tarefa na lista.');
     }
-    setTasks((prev) => [
-      ...prev,
-      { id: tasks.length, title: inputTask, checked: false },
-    ]);
-    setInputTask('');
-    Keyboard.dismiss();
   }
 
   const handleOnCheck = useCallback(
-    (item: Task) => {
-      if (item.checked === true) {
+    async (item: StorageTaskDTO) => {
+      if (item.checked) {
         const chooseStatus = tasks.findIndex((task) => task === item);
         const updatedTasks = [...tasks];
         updatedTasks[chooseStatus].checked = false;
+        await AsyncStorage.setItem(
+          TASK_COLLECTION,
+          JSON.stringify(updatedTasks)
+        );
         setTasks(updatedTasks);
         return;
       }
+
       const chooseStatus = tasks.findIndex((task) => task === item);
       const updatedTasks = [...tasks];
       updatedTasks[chooseStatus].checked = true;
+      await AsyncStorage.setItem(TASK_COLLECTION, JSON.stringify(updatedTasks));
       setTasks(updatedTasks);
     },
     [tasks]
   );
 
-  function handleOnRemove(index: number) {
-    if (index < 0 || index >= tasks.length) {
-      return tasks;
-    }
-
-    const newArray = [...tasks];
-    newArray.splice(index, 1);
-
-    setTasks(newArray);
-  }
+  const handleOnRemove = useCallback(
+    async (item: StorageTaskDTO) => {
+      await removeStorageTask(item);
+      fetchTasks();
+    },
+    [fetchTasks, removeStorageTask]
+  );
 
   function countCheckedItems() {
     const checkedItems = tasks.filter((item) => item.checked === true);
@@ -76,8 +95,17 @@ export function Home() {
     return count;
   }
 
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
   return (
-    <SafeAreaView style={styles.Container}>
+    <SafeAreaView
+      style={[
+        styles.Container,
+        Platform.OS === 'android' && { paddingTop: '15%' },
+      ]}
+    >
       <StatusBar
         barStyle={'light-content'}
         translucent
@@ -96,14 +124,7 @@ export function Home() {
       </View>
       <View style={styles.TasksStatusContainer}>
         <View style={styles.TasksStatusButton}>
-          <Text
-            style={[
-              styles.TasksStatus,
-              {
-                color: '#4EA8DE',
-              },
-            ]}
-          >
+          <Text style={[styles.TasksStatus, { color: '#4EA8DE' }]}>
             Criadas
           </Text>
           <View style={styles.NumberOfTasksContainer}>
@@ -111,14 +132,7 @@ export function Home() {
           </View>
         </View>
         <View style={styles.TasksStatusButton}>
-          <Text
-            style={[
-              styles.TasksStatus,
-              {
-                color: '#8284FA',
-              },
-            ]}
-          >
+          <Text style={[styles.TasksStatus, { color: '#8284FA' }]}>
             Concluídas
           </Text>
           <View style={styles.NumberOfTasksContainer}>
@@ -128,17 +142,38 @@ export function Home() {
       </View>
 
       <FlatList
+        contentContainerStyle={{
+          minHeight: '40%',
+        }}
         showsVerticalScrollIndicator={false}
         data={tasks}
         keyExtractor={(_, index) => String(index)}
         renderItem={({ item, index }) => (
           <Task_Card
             onCheck={() => handleOnCheck(item)}
-            onRemove={() => handleOnRemove(index)}
+            onRemove={() => handleOnRemove(item)}
             check={item.checked}
             title={item.title}
           />
         )}
+        ListEmptyComponent={
+          <View style={styles.EmptyMessageContainer}>
+            <Image
+              style={{ marginBottom: 16 }}
+              source={require('@assets/images/png/List.png')}
+            />
+            <Text
+              style={[styles.EmptyMessage, { fontFamily: 'Inter_700Bold' }]}
+            >
+              Se você ainda não tem tarefas cadastradas
+            </Text>
+            <Text
+              style={[styles.EmptyMessage, { fontFamily: 'Inter_400Regular' }]}
+            >
+              Crie tarefas e organize seus items a fazer
+            </Text>
+          </View>
+        }
       />
     </SafeAreaView>
   );

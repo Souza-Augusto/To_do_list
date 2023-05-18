@@ -48,4 +48,12 @@ export const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     color: '#D9D9D9',
   },
+  EmptyMessageContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 0.5,
+    borderColor: '#808080',
+  },
+  EmptyMessage: { color: '#808080', marginBottom: 6 },
 });
